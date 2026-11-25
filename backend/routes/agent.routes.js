@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   createAgent,
+  generateAgent,
   getAgents,
   getAgentById,
   updateAgent,
@@ -16,6 +17,7 @@ const agentRouter = express.Router();
 // All routes require authentication
 agentRouter.use(protect);
 
+agentRouter.post("/generate", generateAgent);
 agentRouter.post("/", createAgent);
 agentRouter.get("/", getAgents);
 agentRouter.get("/:id", getAgentById);

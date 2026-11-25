@@ -1,6 +1,41 @@
 import mongoose from "mongoose";
 import Agent from "../models/agent.model.js";
+import {
+  AgentGeneratorError,
+  generateAgentConfig,
+} from "../services/agentGenerator.service.js";
 
+// POST /api/agents/generate
+// Convert natural language into a reviewable agent draft (does not save).
+export const generateAgent = async (req, res) => {
+  try {
+    const { draft, meta } = await generateAgentConfig(req.body?.prompt);
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Agent draft generated. Review and save it with the Create Agent API.",
+      draft,
+      meta,
+    });
+  } catch (error) {
+    if (error instanceof AgentGeneratorError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+        code: error.code,
+        ...(error.details ? { details: error.details } : {}),
+      });
+    }
+
+    console.error("Generate agent error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate agent configuration.",
+    });
+  }
+};
 
 // POST /api/agents
 // Create a new agent

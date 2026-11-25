@@ -10,6 +10,7 @@ import agentChatRouter from "./routes/agentChat.routes.js";
 import chatRouter from "./routes/chat.routes.js";
 import integrationRouter from "./routes/integration.route.js";
 import paymentRouter from "./routes/payment.routes.js";
+import workflowRouter from "./routes/workflow.routes.js";
 dotenv.config();
 
 const app = express();
@@ -21,8 +22,10 @@ app.use(
     credentials:true
   })
 );
+
 app.use(express.json());
 app.use(cookieParser());
+
 
 app.use("/api/auth",authRouter)
 app.use("/api/agents", agentRouter);
@@ -30,6 +33,16 @@ app.use("/api/agent-chat", agentChatRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/integrations", integrationRouter);
 app.use("/api/payment", paymentRouter);
+app.use(express.json());
+app.use(cookieParser());
+
+app.use("/api/auth", authRouter);
+app.use("/api/agents", agentRouter);
+app.use("/api/agent-chat", agentChatRouter);
+app.use("/api/chat", chatRouter);
+app.use("/api/integrations", integrationRouter);
+app.use("/api/payment", paymentRouter);
+app.use("/api/workflows", workflowRouter); // ✅ Correct
 
 
 app.listen(PORT, () => {

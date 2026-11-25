@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "node --test tests/**/*.test.js",
+    "test:agent-generator": "node --test tests/agentGenerator.service.test.js"
   },
   "keywords": [],
   "author": "",
