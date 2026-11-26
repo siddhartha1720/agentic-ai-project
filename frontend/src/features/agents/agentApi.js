@@ -1,6 +1,10 @@
 import api from "@/api";
 
-
+// Generate an agent configuration draft from a natural-language prompt
+export const generateAgentApi = async (prompt) => {
+  const response = await api.post("/api/agents/generate", { prompt });
+  return response.data;
+};
 
 // Fetch all agents
 export const fetchAgentsApi = async () => {

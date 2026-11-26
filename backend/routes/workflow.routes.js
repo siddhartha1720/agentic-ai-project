@@ -8,6 +8,7 @@ import {
   listWorkflows,
   getWorkflow,
   runWorkflow,
+  listAllWorkflowRuns,
   getWorkflowRuns,
   resumeWorkflowRun,
 } from "../controllers/workflow.controller.js";
@@ -28,6 +29,7 @@ router.use(protect);
 router.post("/generate", generateWorkflowDraft);
 router.post("/", createWorkflow);
 router.get("/", listWorkflows);
+router.get("/runs", listAllWorkflowRuns);
 router.get("/:id", getWorkflow);
 router.post("/:id/run", runWorkflow);
 router.get("/:id/runs", getWorkflowRuns);

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { FaInstagram } from "react-icons/fa";
 
+import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,14 +17,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import api from "@/api";
 
 const integrationList = [
   {
     id: "gmail",
     name: "Gmail",
-    description: "Send and manage emails through your AI agent.",
+    description: "Send and manage emails through your AI agent and workflows.",
     icon: Mail,
     provider: "google",
   },
@@ -48,19 +48,30 @@ export default function Integrations() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(null);
   const [disconnecting, setDisconnecting] = useState(null);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("error")
+      ? "Account connection failed. Please try again."
+      : "";
+  });
+  const [success, setSuccess] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google") === "connected") {
+      return "Google account connected successfully.";
+    }
+    if (params.get("instagram") === "connected") {
+      return "Instagram account connected successfully.";
+    }
+    return "";
+  });
 
   const fetchIntegrations = useCallback(async () => {
     try {
       setError("");
-
       const { data } = await api.get("/api/integrations");
-
       setIntegrations(data.integrations || {});
     } catch (err) {
       console.error("Failed to fetch integrations:", err);
-
       setError(
         err.response?.data?.message ||
           "Failed to load integrations. Please try again."
@@ -72,25 +83,33 @@ export default function Integrations() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-
-    const googleStatus = params.get("google");
-    const instagramStatus = params.get("instagram");
-    const oauthError = params.get("error");
-
-    if (googleStatus === "connected") {
-      setSuccess("Google account connected successfully.");
-    } else if (instagramStatus === "connected") {
-      setSuccess("Instagram account connected successfully.");
-    } else if (oauthError) {
-      setError("Account connection failed. Please try again.");
-    }
-
-    if (googleStatus || instagramStatus || oauthError) {
+    if (params.get("google") || params.get("instagram") || params.get("error")) {
       window.history.replaceState({}, "", window.location.pathname);
     }
 
-    fetchIntegrations();
-  }, [fetchIntegrations]);
+    let active = true;
+    api
+      .get("/api/integrations")
+      .then(({ data }) => {
+        if (active) setIntegrations(data.integrations || {});
+      })
+      .catch((err) => {
+        console.error("Failed to fetch integrations:", err);
+        if (active) {
+          setError(
+            err.response?.data?.message ||
+              "Failed to load integrations. Please try again."
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleConnect = async (id) => {
     try {
@@ -99,52 +118,40 @@ export default function Integrations() {
       setSuccess("");
 
       if (id === "gmail" || id === "googleCalendar") {
-        const { data } = await api.get(
-          "/api/integrations/google/connect"
-        );
-
+        const { data } = await api.get("/api/integrations/google/connect");
         if (!data.success || !data.url) {
           throw new Error("Google authorization URL not received.");
         }
-
         window.location.assign(data.url);
         return;
       }
 
       if (id === "instagram") {
-        const { data } = await api.get(
-          "/api/integrations/instagram/auth"
-        );
-
+        const { data } = await api.get("/api/integrations/instagram/auth");
         if (!data.success || !data.url) {
           throw new Error("Instagram authorization URL not received.");
         }
-
         window.location.assign(data.url);
         return;
       }
     } catch (err) {
       console.error("Integration connection failed:", err);
-
       setError(
         err.response?.data?.message ||
           err.message ||
           "Unable to connect integration."
       );
-
       setConnecting(null);
     }
   };
 
   const handleDisconnect = async (id) => {
     const integration = integrationList.find((item) => item.id === id);
-
     if (!integration) return;
 
     const confirmed = window.confirm(
       `Are you sure you want to disconnect ${integration.name}?`
     );
-
     if (!confirmed) return;
 
     try {
@@ -159,11 +166,9 @@ export default function Integrations() {
       }
 
       setSuccess(`${integration.name} disconnected successfully.`);
-
       await fetchIntegrations();
     } catch (err) {
       console.error("Integration disconnection failed:", err);
-
       setError(
         err.response?.data?.message ||
           `Failed to disconnect ${integration.name}.`
@@ -174,29 +179,11 @@ export default function Integrations() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,#2b2f3a_0%,#191b21_55%,#121317_100%)] px-4 py-10 text-white sm:px-8">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.35)_100%)]"
-      />
-
-      <div className="relative z-10 mx-auto max-w-3xl space-y-8">
-        <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-violet-300/80">
-            SETTINGS / INTEGRATIONS
-          </p>
-
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Integrations
-          </h1>
-
-          <p className="text-sm text-zinc-500">
-            Connect your accounts and let AutoMate AI handle tasks for you.
-          </p>
-        </div>
-
-        <Separator className="bg-white/10" />
-
+    <AppLayout
+      title="Integrations"
+      subtitle="Connect your accounts and let AutoMate AI execute tasks securely."
+    >
+      <div className="mx-auto max-w-3xl space-y-6">
         {error && (
           <div className="rounded-xl border border-red-500/20 bg-red-500/[0.08] p-4">
             <p className="text-sm text-red-300">{error}</p>
@@ -220,9 +207,8 @@ export default function Integrations() {
               disconnecting === item.id ||
               (item.provider === "google" &&
                 disconnecting !== null &&
-                integrationList.find(
-                  (entry) => entry.id === disconnecting
-                )?.provider === "google");
+                integrationList.find((entry) => entry.id === disconnecting)
+                  ?.provider === "google");
 
             return (
               <Card
@@ -237,9 +223,7 @@ export default function Integrations() {
 
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="font-medium text-white">
-                          {item.name}
-                        </h2>
+                        <h2 className="font-medium text-white">{item.name}</h2>
 
                         {!loading && connected && (
                           <Badge
@@ -252,16 +236,14 @@ export default function Integrations() {
                         )}
                       </div>
 
-                      <CardTitle className="sr-only">
-                        {item.name}
-                      </CardTitle>
+                      <CardTitle className="sr-only">{item.name}</CardTitle>
 
-                      <CardDescription className="max-w-md leading-relaxed text-zinc-500">
+                      <CardDescription className="max-w-md leading-relaxed text-zinc-400">
                         {item.description}
                       </CardDescription>
 
                       {connected && (
-                        <p className="pt-1 text-xs text-zinc-500">
+                        <p className="pt-1 text-xs text-zinc-400">
                           {integration.email ||
                             integration.username ||
                             integration.displayName ||
@@ -306,11 +288,11 @@ export default function Integrations() {
           })}
         </div>
 
-        <p className="text-xs leading-relaxed text-zinc-600">
+        <p className="text-xs leading-relaxed text-zinc-500">
           Your account credentials are not displayed here. Connected
           integrations are managed securely by AutoMate AI.
         </p>
       </div>
-    </div>
+    </AppLayout>
   );
 }
