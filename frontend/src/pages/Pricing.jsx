@@ -1,6 +1,5 @@
-
-import React, { useState } from "react";
-import axios from "axios";
+import { useState } from "react";
+import { useDispatch } from "react-redux";
 import {
   Check,
   Zap,
@@ -11,7 +10,9 @@ import {
   Sparkles,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,8 +24,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-
-import { toast } from "sonner";
+import { fetchMeApi } from "@/features/auth";
+import { setUser } from "@/redux/userSlice";
 import api from "@/api";
 
 const plans = [
@@ -100,7 +101,8 @@ const loadRazorpayScript = () => {
   });
 };
 
-function Pricing() {
+export default function Pricing() {
+  const dispatch = useDispatch();
   const [loadingPlan, setLoadingPlan] = useState(null);
 
   const handlePurchase = async (planId) => {
@@ -109,32 +111,21 @@ function Pricing() {
     try {
       setLoadingPlan(planId);
 
-      // 1. Load Razorpay Checkout
       const scriptLoaded = await loadRazorpayScript();
-
       if (!scriptLoaded) {
         toast.error("Unable to load Razorpay. Please try again.");
         return;
       }
 
-      // 2. Create order through backend
-      const { data: orderData } = await api.post(
-        "/api/payment/create",
-        {
-          plan: planId,
-        },
-        {
-          withCredentials: true,
-        }
-      );
+      const { data: orderData } = await api.post("/api/payment/create", {
+        plan: planId,
+      });
 
       const { order, plan, key_id } = orderData;
-
       if (!order?.id || !key_id) {
         throw new Error("Invalid order response from server");
       }
 
-      // 3. Open Razorpay Checkout
       const options = {
         key: key_id,
         amount: order.amount,
@@ -145,25 +136,22 @@ function Pricing() {
 
         handler: async (response) => {
           try {
-            // 4. Verify payment through backend
-            const { data: verifyData } = await api.post(
-              "/api/payment/verify",
-              {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              },
-              {
-                withCredentials: true,
-              }
-            );
+            const { data: verifyData } = await api.post("/api/payment/verify", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
 
             toast.success(
               verifyData.message || "Payment verified successfully!"
             );
 
-            // Refresh current page/user data if needed.
-            // Add your auth-context user refresh here.
+            try {
+              const updatedUser = await fetchMeApi();
+              dispatch(setUser(updatedUser));
+            } catch {
+              // ignore refresh error
+            }
           } catch (error) {
             toast.error(
               error.response?.data?.message ||
@@ -186,7 +174,6 @@ function Pricing() {
       };
 
       const razorpay = new window.Razorpay(options);
-
       razorpay.on("payment.failed", (response) => {
         toast.error(
           response.error?.description || "Payment failed. Please try again."
@@ -197,47 +184,41 @@ function Pricing() {
       razorpay.open();
     } catch (error) {
       console.error("Purchase error:", error);
-
       toast.error(
         error.response?.data?.message ||
           error.message ||
           "Unable to start payment. Please try again."
       );
-
       setLoadingPlan(null);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,#2b2f3a_0%,#191b21_55%,#121317_100%)] px-4 py-12 text-white sm:px-6 lg:px-10">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.35)_100%)]"
-      />
-
-      <div className="relative z-10 mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="mb-12 text-center">
+    <AppLayout
+      title="Pricing & Credits"
+      subtitle="Top up credits to power your AI agents and automated workflows."
+    >
+      <div className="mx-auto max-w-6xl py-2">
+        <div className="mb-10 text-center">
           <Badge
             variant="outline"
-            className="mb-5 rounded-full border-white/10 bg-white/[0.05] px-3 py-1 text-zinc-300 backdrop-blur-xl"
+            className="mb-4 rounded-full border-white/10 bg-white/[0.05] px-3 py-1 text-zinc-300 backdrop-blur-xl"
           >
             <Sparkles className="mr-2 h-3.5 w-3.5 text-violet-300" />
             Simple, transparent pricing
           </Badge>
 
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             Unlock more with{" "}
             <span className="text-violet-300/90">AutoMate AI.</span>
-          </h1>
+          </h2>
 
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-zinc-500 sm:text-base">
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
             Get the credits you need to chat with AI, use powerful tools, and
             automate your everyday tasks.
           </p>
         </div>
 
-        {/* Pricing Cards */}
         <div className="grid items-stretch gap-5 pt-3 md:grid-cols-3">
           {plans.map((plan) => {
             const Icon = plan.icon;
@@ -274,7 +255,7 @@ function Pricing() {
                       {plan.name}
                     </CardTitle>
 
-                    <CardDescription className="min-h-10 text-sm leading-5 text-zinc-500">
+                    <CardDescription className="min-h-10 text-sm leading-5 text-zinc-400">
                       {plan.description}
                     </CardDescription>
 
@@ -355,22 +336,7 @@ function Pricing() {
             );
           })}
         </div>
-
-        {/* Footer */}
-        <div className="mt-10 border-t border-white/[0.08] pt-6 text-center">
-          <p className="text-sm text-zinc-500">
-            Need help choosing a plan?{" "}
-            <a
-              href="mailto:support@automateai.com"
-              className="text-zinc-300 underline-offset-4 transition hover:text-white hover:underline"
-            >
-              Contact support
-            </a>
-          </p>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
-
-export default Pricing;

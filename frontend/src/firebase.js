@@ -9,13 +9,12 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
- authDomain: "automate-demo-46be7.firebaseapp.com",
-  projectId: "automate-demo-46be7",
-  storageBucket: "automate-demo-46be7.firebasestorage.app",
-  messagingSenderId: "943307435164",
-  appId: "1:943307435164:web:d062da5e4f666e23ecd159"
+  authDomain: "automate-ai-2052d.firebaseapp.com",
+  projectId: "automate-ai-2052d",
+  storageBucket: "automate-ai-2052d.firebasestorage.app",
+  messagingSenderId: "606422253826",
+  appId: "1:606422253826:web:38707040bdacd92101821b"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
