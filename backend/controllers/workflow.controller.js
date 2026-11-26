@@ -204,6 +204,38 @@ export const runWorkflow = async (req, res) => {
   }
 };
 
+const RUN_HISTORY_SELECT =
+  "_id workflowId status steps currentNodeId currentOutput history error approval.status approval.toolId approval.args approval.requestedAt approval.decidedAt actionExecution.status actionExecution.result createdAt completedAt";
+
+// Get all workflow runs for authenticated user (recent activity & approvals)
+export const listAllWorkflowRuns = async (req, res) => {
+  try {
+    const filter = { userId: req.user._id };
+
+    if (req.query?.status) {
+      filter.status = String(req.query.status);
+    }
+
+    const runs = await WorkflowRun.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .select(RUN_HISTORY_SELECT)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      runs,
+    });
+  } catch (error) {
+    console.error("List all workflow runs failed:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve workflow runs.",
+    });
+  }
+};
+
 // Get workflow execution history
 export const getWorkflowRuns = async (req, res) => {
   try {
@@ -225,9 +257,7 @@ export const getWorkflowRuns = async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .limit(20)
-      .select(
-        "_id status steps currentNodeId createdAt completedAt"
-      )
+      .select(RUN_HISTORY_SELECT)
       .lean();
 
     return res.status(200).json({
